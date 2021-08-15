@@ -75,7 +75,21 @@ public class TSVParser {
                 JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
                 for(int i=0; i < fields.size(); i++){
                     JSONObject field = (JSONObject) fields.get(i);
-                    group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
+                    String name = (String)field.get("name");
+                    //group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
+                    if ((field.get("type")).equals("double")){
+                        //group.append(name, Double.parseDouble(columns[Integer.parseInt(field.get("index"))]));
+                        group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                        //group.append((String) field.get("name"), 333.55);
+                    }
+                    else if ((field.get("type")).equals("binary")){
+                        group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                    }
+
+                    else if ((field.get("type")).equals("int64")){
+                        group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                        //  group.append(name, 786972);
+                    }
                 }
             }
             catch (ParseException e){
@@ -119,7 +133,23 @@ public class TSVParser {
                 JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
                 for(int i=0; i < fields.size(); i++){
                     JSONObject field = (JSONObject) fields.get(i);
-                    group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
+                    String name = (String) field.get("name");
+                    if ((field.get("type")).equals("double")){
+                        //group.append(name, Double.parseDouble(columns[Integer.parseInt(field.get("index"))]));
+                        group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                        //group.append((String) field.get("name"), 333.55);
+                    }
+                    else if ((field.get("type")).equals("binary")){
+                        group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                    }
+
+                    else if ((field.get("type")).equals("int64")){
+                        group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                      //  group.append(name, 786972);
+                    }
+
+
+
                 }
             }
             catch (ParseException e){
@@ -127,6 +157,7 @@ public class TSVParser {
             }
 
             context.write(null, group);
+
         }
 
     }
@@ -197,7 +228,7 @@ public class TSVParser {
             schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
         }
         schema = schema + "}";
-       // System.out.println(schema);
+        System.out.println(schema);
         ExampleOutputFormat.setSchema(job, MessageTypeParser.parseMessageType(schema));
 
         ExampleOutputFormat.setCompression(job, CompressionCodecName.UNCOMPRESSED);

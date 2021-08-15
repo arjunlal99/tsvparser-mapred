@@ -5,22 +5,22 @@
   "outputFilename": "dhcp-log",
   "fields": [{
     "name" : "ts",
-    "type" : "BINARY",
+    "type" : "double",
     "index": "0"
   },
     {
       "name" : "uid",
-      "type" : "BINARY",
+      "type" : "binary",
       "index" : "1"
     },
     {
       "name" : "id.orig_h" ,
-      "type" : "BINARY",
+      "type" : "binary",
       "index" : "2"
     },
     {
       "name" : "id.orig_p",
-      "type" : "BINARY",
+      "type" : "int64",
       "index" : "3"
     }]
 }
