@@ -1,12 +1,14 @@
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Locale;
 
 import org.apache.parquet.Log;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.example.ExampleInputFormat;
 import org.apache.parquet.hadoop.example.ExampleOutputFormat;
@@ -20,6 +22,7 @@ import org.apache.parquet.schema.Type;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -35,6 +38,55 @@ import org.json.simple.parser.ParseException;
 
 public class TSVParser {
 
+    public static class CSVParserMapper extends Mapper<LongWritable, Text, Void, Group>{
+
+        final String DELIMITER = ",";
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
+
+            String line = value.toString();
+            String[] columns = line.split(DELIMITER);
+
+            for (int i=0 ; i < columns.length; i++){
+                String token = columns[i];
+                token = token.trim();
+                token = token.replaceAll("^\"|\"$", "");
+            }
+
+            JSONParser jsonParser = new JSONParser();
+            Configuration conf = context.getConfiguration();
+            String schema = "message example{\n";
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+                }
+                schema = schema + "}";
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+            GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(schema));
+            Group group = factory.newGroup();
+
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
+                }
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+
+            context.write(null, group);
+        }
+
+    }
 
     public static class TSVParserMapper extends Mapper<LongWritable, Text, Void, Group>{
 
@@ -81,7 +133,7 @@ public class TSVParser {
 
     public static class ConfParser{
 
-       public static String inputDir, outputDir, outputFilename;
+       public static String inputDir, outputDir, outputFilename, inputFileFormat;
        public static JSONArray fields;
 /*
     path -> absolute path
@@ -100,6 +152,8 @@ public class TSVParser {
             try(FileReader reader = new FileReader(path)){
                 Object obj = jsonParser.parse(reader);
                 JSONObject file = (JSONObject) obj;
+                ConfParser.inputFileFormat = file.get("inputFileFormat").toString();
+                System.out.println(file.get("inputFileFormat").toString());
                 ConfParser.inputDir = file.get("inputDir").toString();
                 ConfParser.outputDir = file.get("outputDir").toString();
                 ConfParser.outputFilename = file.get("outputFilename").toString();
@@ -125,7 +179,11 @@ public class TSVParser {
         Job job = Job.getInstance(conf, "TSVParser");
         job.getConfiguration().set("mapreduce.output.basename", ConfParser.outputFilename);
         job.setJarByClass(TSVParser.class);
-        job.setMapperClass(TSVParserMapper.class);
+
+        //job.setMapperClass(TSVParserMapper.class);
+        System.out.println(ConfParser.inputFileFormat.equals("tsv"));
+        job.setMapperClass(ConfParser.inputFileFormat.equals("tsv") ? TSVParserMapper.class : CSVParserMapper.class );
+
         job.setNumReduceTasks(0);
         job.setOutputKeyClass(Void.class);
         job.setOutputValueClass(Group.class);
@@ -139,6 +197,7 @@ public class TSVParser {
             schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
         }
         schema = schema + "}";
+       // System.out.println(schema);
         ExampleOutputFormat.setSchema(job, MessageTypeParser.parseMessageType(schema));
 
         ExampleOutputFormat.setCompression(job, CompressionCodecName.UNCOMPRESSED);

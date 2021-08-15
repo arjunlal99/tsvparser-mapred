@@ -1,4 +1,5 @@
 {
+  "inputFileFormat" : "tsv",
   "inputDir": "/input",
   "outputDir": "/output",
   "outputFilename": "dhcp-log",
