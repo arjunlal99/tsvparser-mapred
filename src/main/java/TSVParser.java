@@ -1,0 +1,263 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Locale;
+
+import org.apache.parquet.Log;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
+import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.example.ExampleInputFormat;
+import org.apache.parquet.hadoop.example.ExampleOutputFormat;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.Type;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+
+import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+
+public class TSVParser {
+
+    public static class CSVParserMapper extends Mapper<LongWritable, Text, Void, Group>{
+
+        final String DELIMITER = ",";
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
+
+            String line = value.toString();
+            String[] columns = line.split(DELIMITER);
+
+            for (int i=0 ; i < columns.length; i++){
+                String token = columns[i];
+                token = token.trim();
+                token = token.replaceAll("^\"|\"$", "");
+            }
+
+            JSONParser jsonParser = new JSONParser();
+            Configuration conf = context.getConfiguration();
+            String schema = "message example{\n";
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+                }
+                schema = schema + "}";
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+            GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(schema));
+            Group group = factory.newGroup();
+
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    String name = (String)field.get("name");
+                    String type = (String) field.get("type");
+                    switch (name){
+                        case ("double"):
+                            group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                        case ("float"):
+                            group.append(name, Float.parseFloat(columns[Integer.parseInt((String) field.get("index"))]));
+                        case ("string"):
+                            group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                        case ("int32"):
+                            group.append(name, Integer.parseInt(columns[Integer.parseInt((String) field.get("index"))]));
+                        case ("int64"):
+                            group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                        case ("boolean"):
+                            group.append(name, Boolean.parseBoolean(columns[Integer.parseInt((String)field.get("index"))]));
+                    }
+
+
+
+                }
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+
+            context.write(null, group);
+        }
+
+    }
+
+    public static class TSVParserMapper extends Mapper<LongWritable, Text, Void, Group>{
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException{
+            String line = value.toString();
+            String[] columns = line.split("\t");
+            JSONParser jsonParser = new JSONParser();
+            Configuration conf = context.getConfiguration();
+            String schema = "message example{\n";
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    String type = (String) field.get("type");
+                    System.out.println(type);
+                    System.out.println(type.equals("string"));
+
+                    schema = schema + "required " + (type.equals("string") ? "binary" : type ) + " " + (String) field.get("name")  +";\n";
+                }
+                schema = schema + "}";
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+            GroupFactory factory = new SimpleGroupFactory(MessageTypeParser.parseMessageType(schema));
+            Group group = factory.newGroup();
+       //     String fields = conf.get("path");
+
+
+
+           // JSONParser jsonParser = new JSONParser();
+            try{
+                JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
+                for(int i=0; i < fields.size(); i++){
+                    JSONObject field = (JSONObject) fields.get(i);
+                    String name = (String) field.get("name");
+                    String type = (String) field.get("type");
+
+                    switch (type){
+                        case ("double"):
+                            group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
+                        case ("float"):
+                            group.append(name, Float.parseFloat(columns[Integer.parseInt((String) field.get("index"))]));
+                            break;
+                        case ("string"):
+                            group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                            break;
+                        case ("int32"):
+                            group.append(name, Integer.parseInt(columns[Integer.parseInt((String) field.get("index"))]));
+                            break;
+                        case ("int64"):
+                            group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
+                        case ("boolean"):
+                            group.append(name, Boolean.parseBoolean(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
+                    }
+                }
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+
+            context.write(null, group);
+
+        }
+
+    }
+
+    public static class ConfParser{
+
+       public static String inputDir, outputDir, outputFilename, inputFileFormat;
+       public static JSONArray fields;
+/*
+    path -> absolute path
+
+    conf.json
+    {
+        "inputDir": "/input",
+        "outputDir": "/output",
+        "outputFilename": "dhcp-log",
+        "fields": []
+}
+
+ */
+       public ConfParser(String path){
+            JSONParser jsonParser = new JSONParser();
+            try(FileReader reader = new FileReader(path)){
+                Object obj = jsonParser.parse(reader);
+                JSONObject file = (JSONObject) obj;
+                ConfParser.inputFileFormat = file.get("inputFileFormat").toString();
+                System.out.println(file.get("inputFileFormat").toString());
+                ConfParser.inputDir = file.get("inputDir").toString();
+                ConfParser.outputDir = file.get("outputDir").toString();
+                ConfParser.outputFilename = file.get("outputFilename").toString();
+                ConfParser.fields = (JSONArray) file.get("fields");
+             //   System.out.println(ConfParser.fields);
+            }
+            catch (FileNotFoundException e){
+                e.printStackTrace();
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+            catch (ParseException e){
+                e.printStackTrace();
+            }
+       }
+    }
+
+    public static void main (String [] args) throws Exception{
+        ConfParser confParser = new ConfParser(args[0]);
+        Configuration conf = new Configuration();
+        conf.set("fields", String.valueOf(ConfParser.fields));
+        Job job = Job.getInstance(conf, "TSVParser");
+        job.getConfiguration().set("mapreduce.output.basename", ConfParser.outputFilename);
+        job.setJarByClass(TSVParser.class);
+
+        //job.setMapperClass(TSVParserMapper.class);
+        System.out.println(ConfParser.inputFileFormat.equals("tsv"));
+        job.setMapperClass(ConfParser.inputFileFormat.equals("tsv") ? TSVParserMapper.class : CSVParserMapper.class );
+
+        job.setNumReduceTasks(0);
+        job.setOutputKeyClass(Void.class);
+        job.setOutputValueClass(Group.class);
+        job.setOutputFormatClass(ExampleOutputFormat.class);
+
+        String schema =  "message example{\n";
+        JSONArray fields = (JSONArray) ConfParser.fields;
+        for(int i=0; i < fields.size(); i++){
+            JSONObject field = (JSONObject) fields.get(i);
+       //     schema = schema + "required " + "BINARY " + (String) field.get("name") + " (utf8)" +";\n";
+            String type = (String)field.get("type");
+            System.out.println(type);
+            System.out.println(type.equals("string"));
+            schema = schema + "required " + (type.equals("string") ? "binary" : type ) + " " + (String) field.get("name")  +";\n";
+        }
+        schema = schema + "}";
+        System.out.println(schema);
+        ExampleOutputFormat.setSchema(job, MessageTypeParser.parseMessageType(schema));
+
+        ExampleOutputFormat.setCompression(job, CompressionCodecName.UNCOMPRESSED);
+
+        FileInputFormat.addInputPath(job, new Path(ConfParser.inputDir));
+        FileOutputFormat.setOutputPath(job, new Path(ConfParser.outputDir));
+
+
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+
+
+
+    }
+
+}
