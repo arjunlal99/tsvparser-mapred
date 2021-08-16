@@ -76,20 +76,24 @@ public class TSVParser {
                 for(int i=0; i < fields.size(); i++){
                     JSONObject field = (JSONObject) fields.get(i);
                     String name = (String)field.get("name");
-                    //group.append((String) field.get("name"), columns[Integer.parseInt((String)field.get("index"))]);
-                    if ((field.get("type")).equals("double")){
-                        //group.append(name, Double.parseDouble(columns[Integer.parseInt(field.get("index"))]));
-                        group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
-                        //group.append((String) field.get("name"), 333.55);
-                    }
-                    else if ((field.get("type")).equals("binary")){
-                        group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                    String type = (String) field.get("type");
+                    switch (name){
+                        case ("double"):
+                            group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                        case ("float"):
+                            group.append(name, Float.parseFloat(columns[Integer.parseInt((String) field.get("index"))]));
+                        case ("string"):
+                            group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                        case ("int32"):
+                            group.append(name, Integer.parseInt(columns[Integer.parseInt((String) field.get("index"))]));
+                        case ("int64"):
+                            group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                        case ("boolean"):
+                            group.append(name, Boolean.parseBoolean(columns[Integer.parseInt((String)field.get("index"))]));
                     }
 
-                    else if ((field.get("type")).equals("int64")){
-                        group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
-                        //  group.append(name, 786972);
-                    }
+
+
                 }
             }
             catch (ParseException e){
@@ -114,7 +118,11 @@ public class TSVParser {
                 JSONArray fields = (JSONArray) jsonParser.parse(conf.get("fields"));
                 for(int i=0; i < fields.size(); i++){
                     JSONObject field = (JSONObject) fields.get(i);
-                    schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+                    String type = (String) field.get("type");
+                    System.out.println(type);
+                    System.out.println(type.equals("string"));
+
+                    schema = schema + "required " + (type.equals("string") ? "binary" : type ) + " " + (String) field.get("name")  +";\n";
                 }
                 schema = schema + "}";
             }
@@ -134,22 +142,28 @@ public class TSVParser {
                 for(int i=0; i < fields.size(); i++){
                     JSONObject field = (JSONObject) fields.get(i);
                     String name = (String) field.get("name");
-                    if ((field.get("type")).equals("double")){
-                        //group.append(name, Double.parseDouble(columns[Integer.parseInt(field.get("index"))]));
-                        group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
-                        //group.append((String) field.get("name"), 333.55);
+                    String type = (String) field.get("type");
+
+                    switch (type){
+                        case ("double"):
+                            group.append(name, Double.parseDouble(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
+                        case ("float"):
+                            group.append(name, Float.parseFloat(columns[Integer.parseInt((String) field.get("index"))]));
+                            break;
+                        case ("string"):
+                            group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
+                            break;
+                        case ("int32"):
+                            group.append(name, Integer.parseInt(columns[Integer.parseInt((String) field.get("index"))]));
+                            break;
+                        case ("int64"):
+                            group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
+                        case ("boolean"):
+                            group.append(name, Boolean.parseBoolean(columns[Integer.parseInt((String)field.get("index"))]));
+                            break;
                     }
-                    else if ((field.get("type")).equals("binary")){
-                        group.append(name, columns[Integer.parseInt((String)field.get("index"))]);
-                    }
-
-                    else if ((field.get("type")).equals("int64")){
-                        group.append(name, Long.parseLong(columns[Integer.parseInt((String)field.get("index"))]));
-                      //  group.append(name, 786972);
-                    }
-
-
-
                 }
             }
             catch (ParseException e){
@@ -225,7 +239,10 @@ public class TSVParser {
         for(int i=0; i < fields.size(); i++){
             JSONObject field = (JSONObject) fields.get(i);
        //     schema = schema + "required " + "BINARY " + (String) field.get("name") + " (utf8)" +";\n";
-            schema = schema + "required " + (String)field.get("type")+ " " + (String) field.get("name")  +";\n";
+            String type = (String)field.get("type");
+            System.out.println(type);
+            System.out.println(type.equals("string"));
+            schema = schema + "required " + (type.equals("string") ? "binary" : type ) + " " + (String) field.get("name")  +";\n";
         }
         schema = schema + "}";
         System.out.println(schema);

@@ -10,12 +10,12 @@
   },
     {
       "name" : "uid",
-      "type" : "binary",
+      "type" : "string",
       "index" : "1"
     },
     {
       "name" : "id.orig_h" ,
-      "type" : "binary",
+      "type" : "string",
       "index" : "2"
     },
     {
